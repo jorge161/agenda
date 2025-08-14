@@ -1,50 +1,80 @@
  let pdfBlob = null;
+let agendaDatos = {};
 
-function mostrarFormulario() {
+async function cargarDatos() {
+    try {
+        const res = await fetch('/api/agenda');
+        agendaDatos = await res.json();
+    } catch (error) {
+        console.log("No se pudo cargar la agenda:", error);
+        agendaDatos = {};
+    }
+}
+
+async function guardarDatos() {
+    try {
+        await fetch('/api/agenda', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(agendaDatos)
+        });
+    } catch (error) {
+        console.log("Error al guardar la agenda:", error);
+    }
+}
+
+async function mostrarFormulario() {
+    await cargarDatos();
     document.getElementById("contenido").innerHTML = `
         <form id="formulario">
             <label>Barrio San Antonio:</label>
 
             <label>Fecha:</label>
-            <input type="date" id="fecha">
+            <input type="date" id="fecha" value="${agendaDatos.fecha || ''}">
 
             <label>Dirige:</label>
-            <input type="text" id="dirige">
+            <input type="text" id="dirige" value="${agendaDatos.dirige || ''}">
 
             <label>Preside:</label>
-            <input type="text" id="preside">
+            <input type="text" id="preside" value="${agendaDatos.preside || ''}">
 
-            ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios')}
+            ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios', agendaDatos.anuncios)}
             <label>Primer Himno:</label>
-            <input type="text" id="primerHimno">
+            <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}">
 
             <label>Primera Oración:</label>
-            <input type="text" id="primeraOracion">
+            <input type="text" id="primeraOracion" value="${agendaDatos.primeraOracion || ''}">
 
-            ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos')}
-            ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios')}
+            ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos', agendaDatos.asuntos)}
+            ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios', agendaDatos.testimonios)}
 
             <label>Primer Discursante:</label>
-            <input type="text" id="primerDiscursante">
+            <input type="text" id="primerDiscursante" value="${agendaDatos.primerDiscursante || ''}">
 
             <label>Himno Intermedio:</label>
-            <input type="text" id="himnoIntermedio">
+            <input type="text" id="himnoIntermedio" value="${agendaDatos.himnoIntermedio || ''}">
 
             <label>Segundo Discursante:</label>
-            <input type="text" id="segundoDiscursante">
+            <input type="text" id="segundoDiscursante" value="${agendaDatos.segundoDiscursante || ''}">
 
             <label>Último Himno:</label>
-            <input type="text" id="ultimoHimno">
+            <input type="text" id="ultimoHimno" value="${agendaDatos.ultimoHimno || ''}">
 
             <label>Última Oración:</label>
-            <input type="text" id="ultimaOracion">
+            <input type="text" id="ultimaOracion" value="${agendaDatos.ultimaOracion || ''}">
 
             <button type="button" onclick="generarPDF()">Aceptar</button>
         </form>
     `;
 }
 
-function crearListaHTML(titulo, inputId, listaId) {
+function crearListaHTML(titulo, inputId, listaId, items=[]) {
+    let liHTML = '';
+    if (items && Array.isArray(items)) {
+        items.forEach(texto => {
+            liHTML += `<li>${texto}<button onclick="this.parentElement.remove()">❌</button></li>`;
+        });
+    }
     return `
     <div class="list-container">
         <label>${titulo}:</label>
@@ -52,7 +82,9 @@ function crearListaHTML(titulo, inputId, listaId) {
             <input type="text" id="${inputId}" placeholder="Escribe aquí">
             <button type="button" onclick="agregarItem('${inputId}','${listaId}')">Agregar</button>
         </div>
-        <ul id="${listaId}" class="item-list"></ul>
+        <ul id="${listaId}" class="item-list">
+            ${liHTML}
+        </ul>
     </div>`;
 }
 
@@ -77,39 +109,57 @@ function generarPDF() {
         return;
     }
 
+    // Guardar datos en agendaDatos
+    agendaDatos = {
+        fecha: document.getElementById("fecha").value,
+        dirige: document.getElementById("dirige").value,
+        preside: document.getElementById("preside").value,
+        primerHimno: document.getElementById("primerHimno").value,
+        primeraOracion: document.getElementById("primeraOracion").value,
+        primerDiscursante: document.getElementById("primerDiscursante").value,
+        himnoIntermedio: document.getElementById("himnoIntermedio").value,
+        segundoDiscursante: document.getElementById("segundoDiscursante").value,
+        ultimoHimno: document.getElementById("ultimoHimno").value,
+        ultimaOracion: document.getElementById("ultimaOracion").value,
+        anuncios: Array.from(document.querySelectorAll("#listaAnuncios li")).map(li => li.textContent.replace('❌','')),
+        asuntos: Array.from(document.querySelectorAll("#listaAsuntos li")).map(li => li.textContent.replace('❌','')),
+        testimonios: Array.from(document.querySelectorAll("#listaTestimonios li")).map(li => li.textContent.replace('❌',''))
+    };
+
+    guardarDatos();
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    let y = 15;
+    let y = 20;
     const lineHeight = 10;
     const pageHeight = doc.internal.pageSize.height;
 
     function checkPageSpace(lines = 1) {
         if (y + lineHeight * lines > pageHeight - 10) {
             doc.addPage();
-            y = 15;
+            y = 20;
         }
     }
 
     function agregarCampo(nombre, valor) {
         checkPageSpace();
         doc.setFontSize(12);
-        doc.text(`${nombre}: ${valor || ''}`, 10, y);
+        doc.text(`${nombre}: ${valor || ''}`, 15, y);
         y += lineHeight;
     }
 
-    function agregarListaPDF(titulo, listaId) {
-        const items = document.querySelectorAll(`#${listaId} li`);
-        if (items.length === 0) return;
+    function agregarListaPDF(titulo, items) {
+        if (!items || items.length === 0) return;
         checkPageSpace();
         doc.setFontSize(12);
-        doc.text(`${titulo}:`, 10, y);
+        doc.text(`${titulo}:`, 15, y);
         y += lineHeight;
-        items.forEach(li => {
+        items.forEach(texto => {
             checkPageSpace();
-            doc.text(`- ${li.textContent.replace('❌','')}`, 15, y);
-            y += 6;
+            doc.text(`- ${texto}`, 20, y);
+            y += 8;
         });
-        y += 2;
+        y += 4;
     }
 
     doc.setFontSize(18);
@@ -117,35 +167,31 @@ function generarPDF() {
     y += 15;
 
     agregarCampo("Barrio", "San Antonio");
-    agregarCampo("Fecha", document.getElementById("fecha").value);
-    agregarCampo("Dirige", document.getElementById("dirige").value);
-    agregarCampo("Preside", document.getElementById("preside").value);
-    agregarListaPDF("Anuncios","listaAnuncios");
-    agregarCampo("Primer Himno", document.getElementById("primerHimno").value);
-    agregarCampo("Primera Oración", document.getElementById("primeraOracion").value);
-    agregarListaPDF("Asuntos del barrio","listaAsuntos");
-    agregarListaPDF("Testimonios","listaTestimonios");
-    agregarCampo("Primer Discursante", document.getElementById("primerDiscursante").value);
-    agregarCampo("Himno Intermedio", document.getElementById("himnoIntermedio").value);
-    agregarCampo("Segundo Discursante", document.getElementById("segundoDiscursante").value);
-    agregarCampo("Último Himno", document.getElementById("ultimoHimno").value);
-    agregarCampo("Última Oración", document.getElementById("ultimaOracion").value);
+    agregarCampo("Fecha", agendaDatos.fecha);
+    agregarCampo("Dirige", agendaDatos.dirige);
+    agregarCampo("Preside", agendaDatos.preside);
+    agregarListaPDF("Anuncios", agendaDatos.anuncios);
+    agregarCampo("Primer Himno", agendaDatos.primerHimno);
+    agregarCampo("Primera Oración", agendaDatos.primeraOracion);
+    agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos);
+    agregarListaPDF("Testimonios", agendaDatos.testimonios);
+    agregarCampo("Primer Discursante", agendaDatos.primerDiscursante);
+    agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio);
+    agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante);
+    agregarCampo("Último Himno", agendaDatos.ultimoHimno);
+    agregarCampo("Última Oración", agendaDatos.ultimaOracion);
 
     pdfBlob = doc.output("blob");
-    alert("Listo!. Ahora puedes ver la agenda");
+    alert("¡Agenda lista! Ahora presiona 'Ver Agenda' para visualizarla.");
 }
 
 function verPDF() {
-    if (!pdfBlob) {
-        alert("Primero debes crear la agenda.");
+    if(!pdfBlob){
+        alert("Primero debes crear una agenda");
         return;
     }
-    const fecha = document.getElementById("fecha").value || new Date().toISOString().split('T')[0];
-    const nombreArchivo = `Agenda_Sacramental_${fecha}.pdf`;
+    const fecha = agendaDatos.fecha || new Date().toISOString().split('T')[0];
+    const nombreArchivo = `Reunión_Sacramental_${fecha}.pdf`;
     const url = URL.createObjectURL(pdfBlob);
-    document.getElementById("contenido").innerHTML = `
-        <h2>Vista previa del PDF</h2>
-        <iframe src="${url}" title="${nombreArchivo}"></iframe>
-        <button onclick="mostrarFormulario()">Volver al formulario</button>
-    `;
+    window.open(url, "_blank"); // Abre el PDF en nueva pestaña
 }
