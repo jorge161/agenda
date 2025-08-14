@@ -132,7 +132,7 @@ function generarPDF() {
     agregarCampo("Última Oración", document.getElementById("ultimaOracion").value);
 
     pdfBlob = doc.output("blob");
-    alert("PDF generado. Ahora presiona 'Ver Agenda' para visualizarlo.");
+    alert("Listo!. Ahora puedes ver la agenda");
 }
 
 function verPDF() {
