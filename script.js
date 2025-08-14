@@ -1,7 +1,6 @@
  let pdfBlob = null;
-let agendaDatos = {}; // Guardar los datos del formulario
+let agendaDatos = {}; // Datos del formulario
 
-// Esperar a que el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     mostrarFormulario();
 });
@@ -9,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function mostrarFormulario() {
     document.getElementById("contenido").innerHTML = `
         <form id="formulario">
-            <label>Barrio San Antonio:</label>
+            <label>Barrio:</label>
+            <input type="text" id="barrio" value="${agendaDatos.barrio || ''}">
 
             <label>Fecha:</label>
             <input type="date" id="fecha" value="${agendaDatos.fecha || ''}">
@@ -52,8 +52,6 @@ function mostrarFormulario() {
             <button type="button" id="btnAceptar">Aceptar</button>
         </form>
     `;
-
-    // Asignar funcionalidad al botón Aceptar
     document.getElementById('btnAceptar').addEventListener('click', generarPDF);
 }
 
@@ -83,6 +81,7 @@ function agregarItem(inputId, listId) {
 
 function actualizarAgendaDatos() {
     agendaDatos = {
+        barrio: document.getElementById("barrio")?.value || '',
         fecha: document.getElementById("fecha")?.value || '',
         dirige: document.getElementById("dirige")?.value || '',
         preside: document.getElementById("preside")?.value || '',
@@ -106,55 +105,86 @@ function generarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 15;
-    const lineHeight = 7;
+    const lineHeight = 10;
     const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
 
     function checkPageSpace(lines = 1) {
-        if (y + lineHeight * lines > pageHeight - 10) {
+        if (y + lineHeight * lines > pageHeight - 20) {
             doc.addPage();
             y = 15;
         }
     }
 
-    function agregarCampo(nombre, valor) {
-        checkPageSpace();
-        doc.setFontSize(12);
-        doc.text(`${nombre}: ${valor || ''}`, 10, y);
-        y += lineHeight;
-    }
+    function agregarCampo(nombre, valor, colorFondo = [245,245,245]) {
+    checkPageSpace();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`${nombre}:`, 10, y);
 
-    function agregarListaPDF(titulo, items) {
+    doc.setFont("helvetica", "normal");
+    const margen = 5; // espacio entre el nombre y el recuadro del valor
+    const x = 10 + doc.getTextWidth(`${nombre}:`) + margen;
+    const ancho = pageWidth - x - 10;
+    const alto = 7;
+    doc.setDrawColor(200);
+    doc.setFillColor(...colorFondo);
+    doc.rect(x, y - 5, ancho, alto, "FD");
+    doc.text(`${valor}`, x + 2, y);
+    y += lineHeight;
+}
+
+
+    function agregarListaPDF(titulo, items, colorFondo=[245,245,245]) {
         if(items.length === 0) return;
         checkPageSpace();
-        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
         doc.text(`${titulo}:`, 10, y);
-        y += lineHeight;
+        y += 7;
+        doc.setFont("helvetica", "normal");
         items.forEach(texto => {
             checkPageSpace();
-            doc.text(`- ${texto}`, 15, y);
-            y += 6;
+            const x = 15;
+            const ancho = pageWidth - x - 15;
+            const alto = 6;
+            doc.setDrawColor(200);
+            doc.setFillColor(...colorFondo);
+            doc.rect(x, y - 5, ancho, alto, "FD");
+            doc.text(`- ${texto}`, x + 2, y);
+            y += 7;
         });
         y += 2;
     }
 
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("Agenda Sacramental", 105, y, null, null, "center");
-    y += 10;
-    agregarCampo("Barrio", "San Antonio");
-    agregarCampo("Fecha", agendaDatos.fecha);
-    agregarCampo("Dirige", agendaDatos.dirige);
-    agregarCampo("Preside", agendaDatos.preside);
-    agregarListaPDF("Anuncios", agendaDatos.anuncios);
-    agregarCampo("Primer Himno", agendaDatos.primerHimno);
-    agregarCampo("Primera Oración", agendaDatos.primeraOracion);
-    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental);
-    agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos);
-    agregarListaPDF("Testimonios", agendaDatos.testimonios);
-    agregarCampo("Primer Discursante", agendaDatos.primerDiscursante);
-    agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio);
-    agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante);
-    agregarCampo("Último Himno", agendaDatos.ultimoHimno);
-    agregarCampo("Última Oración", agendaDatos.ultimaOracion);
+    doc.text("Agenda Sacramental", pageWidth/2, y, null, null, "center");
+    y += 12;
+
+    const colores = [
+        [245,245,245], [230, 240, 255], [245,245,245], [230, 240, 255]
+    ];
+
+    agregarCampo("Barrio", agendaDatos.barrio, colores[0]);
+    agregarCampo("Fecha", agendaDatos.fecha, colores[1]);
+    agregarCampo("Dirige", agendaDatos.dirige, colores[2]);
+    agregarCampo("Preside", agendaDatos.preside, colores[3]);
+    agregarListaPDF("Anuncios", agendaDatos.anuncios, colores[0]);
+    agregarCampo("Primer Himno", agendaDatos.primerHimno, colores[1]);
+    agregarCampo("Primera Oración", agendaDatos.primeraOracion, colores[2]);
+    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental, colores[3]);
+    agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos, colores[0]);
+    agregarListaPDF("Testimonios", agendaDatos.testimonios, colores[1]);
+    agregarCampo("Primer Discursante", agendaDatos.primerDiscursante, colores[2]);
+    agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio, colores[3]);
+    agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante, colores[0]);
+    agregarCampo("Último Himno", agendaDatos.ultimoHimno, colores[1]);
+    agregarCampo("Última Oración", agendaDatos.ultimaOracion, colores[2]);
+
+    // Pie de página
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(10);
+    doc.text("Cortesía de Jorge D. Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
 
     pdfBlob = doc.output("blob");
     alert("¡Listo! Ahora puedes ver la agenda.");
