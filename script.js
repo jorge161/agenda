@@ -4,7 +4,7 @@ function mostrarFormulario() {
     document.getElementById("contenido").innerHTML = `
         <form id="formulario">
             <label>Barrio San Antonio:</label>
-             
+
             <label>Fecha:</label>
             <input type="date" id="fecha">
 
@@ -72,10 +72,15 @@ function agregarItem(inputId, listId) {
 }
 
 function generarPDF() {
+    if (!window.jspdf) {
+        alert("La librería jsPDF aún no está lista. Recarga la página y prueba otra vez.");
+        return;
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 15;
-    const lineHeight = 7;
+    const lineHeight = 10;
     const pageHeight = doc.internal.pageSize.height;
 
     function checkPageSpace(lines = 1) {
@@ -85,21 +90,16 @@ function generarPDF() {
         }
     }
 
-    function agregarCampo(nombre, valor, conLinea = true) {
+    function agregarCampo(nombre, valor) {
         checkPageSpace();
         doc.setFontSize(12);
-        let texto = `${nombre}: ${valor || ''}`;
-        doc.text(texto, 10, y);
-        if(conLinea){
-            doc.setLineWidth(0.1);
-            doc.line(10 + doc.getTextWidth(texto) + 2, y-2, 200, y-2);
-        }
+        doc.text(`${nombre}: ${valor || ''}`, 10, y);
         y += lineHeight;
     }
 
     function agregarListaPDF(titulo, listaId) {
         const items = document.querySelectorAll(`#${listaId} li`);
-        if(items.length === 0) return;
+        if (items.length === 0) return;
         checkPageSpace();
         doc.setFontSize(12);
         doc.text(`${titulo}:`, 10, y);
@@ -114,9 +114,9 @@ function generarPDF() {
 
     doc.setFontSize(18);
     doc.text("Agenda Sacramental", 105, y, null, null, "center");
-    y += 10;
-    doc.setFontSize(14);
-    agregarCampo("Barrio", document.getElementById("barrio").value);
+    y += 15;
+
+    agregarCampo("Barrio", "San Antonio");
     agregarCampo("Fecha", document.getElementById("fecha").value);
     agregarCampo("Dirige", document.getElementById("dirige").value);
     agregarCampo("Preside", document.getElementById("preside").value);
@@ -132,17 +132,16 @@ function generarPDF() {
     agregarCampo("Última Oración", document.getElementById("ultimaOracion").value);
 
     pdfBlob = doc.output("blob");
-    alert("Listo!. Ahora puedes ver la agenda");
+    alert("PDF generado. Ahora presiona 'Ver Agenda' para visualizarlo.");
 }
 
 function verPDF() {
-    if(!pdfBlob){
-        alert("Primero debes crear una agenda");
+    if (!pdfBlob) {
+        alert("Primero debes crear la agenda.");
         return;
     }
-    const barrio = document.getElementById("barrio").value || "ReuniónSacramental";
     const fecha = document.getElementById("fecha").value || new Date().toISOString().split('T')[0];
-    const nombreArchivo = `${barrio}_${fecha}.pdf`;
+    const nombreArchivo = `Agenda_Sacramental_${fecha}.pdf`;
     const url = URL.createObjectURL(pdfBlob);
     document.getElementById("contenido").innerHTML = `
         <h2>Vista previa del PDF</h2>
