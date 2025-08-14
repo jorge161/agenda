@@ -183,7 +183,7 @@ function generarPDF() {
 
     // Pie de página
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(10);
+    doc.setFontSize(8);
     doc.text("Cortesía de Jorge D. Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
 
     pdfBlob = doc.output("blob");
