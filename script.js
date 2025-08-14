@@ -3,11 +3,10 @@
 function mostrarFormulario() {
     document.getElementById("contenido").innerHTML = `
         <form id="formulario">
-            <label>Barrio:</label>
-            <input type="text" id="barrio" value="San Antonio">
-
+            <label>Barrio San Antonio:</label>
+             
             <label>Fecha:</label>
-            <input type="text" id="fecha">
+            <input type="date" id="fecha">
 
             <label>Dirige:</label>
             <input type="text" id="dirige">
