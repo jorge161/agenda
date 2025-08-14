@@ -23,6 +23,13 @@ async function guardarDatos() {
     }
 }
 
+async function inicializar() {
+    await cargarDatos();
+    if (Object.keys(agendaDatos).length > 0) {
+        generarPDF(); // Genera pdfBlob al iniciar
+    }
+}
+
 async function mostrarFormulario() {
     await cargarDatos();
     document.getElementById("contenido").innerHTML = `
@@ -30,49 +37,49 @@ async function mostrarFormulario() {
             <label>Barrio San Antonio:</label>
 
             <label>Fecha:</label>
-            <input type="date" id="fecha" value="${agendaDatos.fecha || ''}">
+            <input type="date" id="fecha" value="${agendaDatos.fecha || ''}" onchange="generarPDF()">
 
             <label>Dirige:</label>
-            <input type="text" id="dirige" value="${agendaDatos.dirige || ''}">
+            <input type="text" id="dirige" value="${agendaDatos.dirige || ''}" oninput="generarPDF()">
 
             <label>Preside:</label>
-            <input type="text" id="preside" value="${agendaDatos.preside || ''}">
+            <input type="text" id="preside" value="${agendaDatos.preside || ''}" oninput="generarPDF()">
 
             ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios', agendaDatos.anuncios)}
             <label>Primer Himno:</label>
-            <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}">
+            <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}" oninput="generarPDF()">
 
             <label>Primera Oración:</label>
-            <input type="text" id="primeraOracion" value="${agendaDatos.primeraOracion || ''}">
+            <input type="text" id="primeraOracion" value="${agendaDatos.primeraOracion || ''}" oninput="generarPDF()">
 
             ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos', agendaDatos.asuntos)}
             ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios', agendaDatos.testimonios)}
 
             <label>Primer Discursante:</label>
-            <input type="text" id="primerDiscursante" value="${agendaDatos.primerDiscursante || ''}">
+            <input type="text" id="primerDiscursante" value="${agendaDatos.primerDiscursante || ''}" oninput="generarPDF()">
 
             <label>Himno Intermedio:</label>
-            <input type="text" id="himnoIntermedio" value="${agendaDatos.himnoIntermedio || ''}">
+            <input type="text" id="himnoIntermedio" value="${agendaDatos.himnoIntermedio || ''}" oninput="generarPDF()">
 
             <label>Segundo Discursante:</label>
-            <input type="text" id="segundoDiscursante" value="${agendaDatos.segundoDiscursante || ''}">
+            <input type="text" id="segundoDiscursante" value="${agendaDatos.segundoDiscursante || ''}" oninput="generarPDF()">
 
             <label>Último Himno:</label>
-            <input type="text" id="ultimoHimno" value="${agendaDatos.ultimoHimno || ''}">
+            <input type="text" id="ultimoHimno" value="${agendaDatos.ultimoHimno || ''}" oninput="generarPDF()">
 
             <label>Última Oración:</label>
-            <input type="text" id="ultimaOracion" value="${agendaDatos.ultimaOracion || ''}">
-
-            <button type="button" onclick="generarPDF()">Aceptar</button>
+            <input type="text" id="ultimaOracion" value="${agendaDatos.ultimaOracion || ''}" oninput="generarPDF()">
         </form>
     `;
+    // Generar PDF inicial con datos precargados
+    generarPDF();
 }
 
 function crearListaHTML(titulo, inputId, listaId, items=[]) {
     let liHTML = '';
     if (items && Array.isArray(items)) {
         items.forEach(texto => {
-            liHTML += `<li>${texto}<button onclick="this.parentElement.remove()">❌</button></li>`;
+            liHTML += `<li>${texto}<button onclick="eliminarItem(this,'${listaId}')">❌</button></li>`;
         });
     }
     return `
@@ -96,34 +103,37 @@ function agregarItem(inputId, listId) {
         li.textContent = texto;
         const btnEliminar = document.createElement("button");
         btnEliminar.textContent = "❌";
-        btnEliminar.onclick = () => li.remove();
+        btnEliminar.onclick = () => eliminarItem(btnEliminar, listId);
         li.appendChild(btnEliminar);
         document.getElementById(listId).appendChild(li);
         input.value = "";
+        generarPDF(); // Actualiza PDF automáticamente
     }
 }
 
-function generarPDF() {
-    if (!window.jspdf) {
-        alert("La librería jsPDF aún no está lista. Recarga la página y prueba otra vez.");
-        return;
-    }
+function eliminarItem(btn, listId) {
+    btn.parentElement.remove();
+    generarPDF(); // Actualiza PDF automáticamente
+}
 
-    // Guardar datos en agendaDatos
+function generarPDF() {
+    if (!window.jspdf) return;
+
+    // Guardar datos
     agendaDatos = {
-        fecha: document.getElementById("fecha").value,
-        dirige: document.getElementById("dirige").value,
-        preside: document.getElementById("preside").value,
-        primerHimno: document.getElementById("primerHimno").value,
-        primeraOracion: document.getElementById("primeraOracion").value,
-        primerDiscursante: document.getElementById("primerDiscursante").value,
-        himnoIntermedio: document.getElementById("himnoIntermedio").value,
-        segundoDiscursante: document.getElementById("segundoDiscursante").value,
-        ultimoHimno: document.getElementById("ultimoHimno").value,
-        ultimaOracion: document.getElementById("ultimaOracion").value,
-        anuncios: Array.from(document.querySelectorAll("#listaAnuncios li")).map(li => li.textContent.replace('❌','')),
-        asuntos: Array.from(document.querySelectorAll("#listaAsuntos li")).map(li => li.textContent.replace('❌','')),
-        testimonios: Array.from(document.querySelectorAll("#listaTestimonios li")).map(li => li.textContent.replace('❌',''))
+        fecha: document.getElementById("fecha") ? document.getElementById("fecha").value : agendaDatos.fecha,
+        dirige: document.getElementById("dirige") ? document.getElementById("dirige").value : agendaDatos.dirige,
+        preside: document.getElementById("preside") ? document.getElementById("preside").value : agendaDatos.preside,
+        primerHimno: document.getElementById("primerHimno") ? document.getElementById("primerHimno").value : agendaDatos.primerHimno,
+        primeraOracion: document.getElementById("primeraOracion") ? document.getElementById("primeraOracion").value : agendaDatos.primeraOracion,
+        primerDiscursante: document.getElementById("primerDiscursante") ? document.getElementById("primerDiscursante").value : agendaDatos.primerDiscursante,
+        himnoIntermedio: document.getElementById("himnoIntermedio") ? document.getElementById("himnoIntermedio").value : agendaDatos.himnoIntermedio,
+        segundoDiscursante: document.getElementById("segundoDiscursante") ? document.getElementById("segundoDiscursante").value : agendaDatos.segundoDiscursante,
+        ultimoHimno: document.getElementById("ultimoHimno") ? document.getElementById("ultimoHimno").value : agendaDatos.ultimoHimno,
+        ultimaOracion: document.getElementById("ultimaOracion") ? document.getElementById("ultimaOracion").value : agendaDatos.ultimaOracion,
+        anuncios: Array.from(document.querySelectorAll("#listaAnuncios li")).map(li => li.textContent.replace('❌','')) || agendaDatos.anuncios || [],
+        asuntos: Array.from(document.querySelectorAll("#listaAsuntos li")).map(li => li.textContent.replace('❌','')) || agendaDatos.asuntos || [],
+        testimonios: Array.from(document.querySelectorAll("#listaTestimonios li")).map(li => li.textContent.replace('❌','')) || agendaDatos.testimonios || []
     };
 
     guardarDatos();
@@ -182,7 +192,6 @@ function generarPDF() {
     agregarCampo("Última Oración", agendaDatos.ultimaOracion);
 
     pdfBlob = doc.output("blob");
-    alert("¡Agenda lista! Ahora presiona 'Ver Agenda' para visualizarla.");
 }
 
 function verPDF() {
@@ -193,5 +202,8 @@ function verPDF() {
     const fecha = agendaDatos.fecha || new Date().toISOString().split('T')[0];
     const nombreArchivo = `Reunión_Sacramental_${fecha}.pdf`;
     const url = URL.createObjectURL(pdfBlob);
-    window.open(url, "_blank"); // Abre el PDF en nueva pestaña
+    window.open(url, "_blank");
 }
+
+// Inicialización al cargar la página
+window.onload = inicializar;
