@@ -7,31 +7,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Agenda Sacramental - Barrio San Antonio</h1>
-    <form id="formulario">
-        <label>Nombre de la Reunión.:
-            <input type="text" id="nombreReunion" value="Reunión Sacramental" required>
-        </label>
-        <label>Fecha:
-            <input type="date" id="fecha" required>
-        </label>
+    <h1>Agenda Sacramental</h1>
 
-        <h3>Oradores</h3>
-        <div id="listaOradores"></div>
-        <button type="button" onclick="agregarItem('listaOradores', 'oradores')">+ Agregar Orador</button>
+    <div class="top-buttons">
+        <button onclick="mostrarFormulario()">Generar</button>
+        <button onclick="verPDF()">Ver</button>
+    </div>
 
-        <h3>Himnos</h3>
-        <div id="listaHimnos"></div>
-        <button type="button" onclick="agregarItem('listaHimnos', 'himnos')">+ Agregar Himno</button>
-
-        <h3>Anuncios</h3>
-        <div id="listaAnuncios"></div>
-        <button type="button" onclick="agregarItem('listaAnuncios', 'anuncios')">+ Agregar Anuncio</button>
-
-        <div class="botones">
-            <button type="button" onclick="verPDF()">📄 Ver PDF</button>
-        </div>
-    </form>
+    <div id="contenido"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
