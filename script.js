@@ -1,43 +1,21 @@
  let pdfBlob = null;
 let agendaDatos = {};
 
-async function cargarDatos() {
-    try {
-        const res = await fetch('/api/agenda');
-        agendaDatos = await res.json();
-    } catch (error) {
-        console.log("No se pudo cargar la agenda:", error);
+// Inicializa la agenda desde JSON en el servidor o vacío
+function inicializar() {
+    if (!agendaDatos || Object.keys(agendaDatos).length === 0) {
         agendaDatos = {};
     }
-}
-
-async function guardarDatos() {
-    try {
-        await fetch('/api/agenda', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(agendaDatos)
-        });
-    } catch (error) {
-        console.log("Error al guardar la agenda:", error);
-    }
-}
-
-async function inicializar() {
-    await cargarDatos();
-    if (Object.keys(agendaDatos).length > 0) {
-        generarPDF(); // Genera pdfBlob al iniciar
-    }
+    generarPDF(); // Genera PDF inicial vacío
 }
 
 async function mostrarFormulario() {
-    await cargarDatos();
     document.getElementById("contenido").innerHTML = `
         <form id="formulario">
             <label>Barrio San Antonio:</label>
 
             <label>Fecha:</label>
-            <input type="date" id="fecha" value="${agendaDatos.fecha || ''}" onchange="generarPDF()">
+            <input type="date" id="fecha" value="${agendaDatos.fecha || ''}" oninput="generarPDF()">
 
             <label>Dirige:</label>
             <input type="text" id="dirige" value="${agendaDatos.dirige || ''}" oninput="generarPDF()">
@@ -46,6 +24,7 @@ async function mostrarFormulario() {
             <input type="text" id="preside" value="${agendaDatos.preside || ''}" oninput="generarPDF()">
 
             ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios', agendaDatos.anuncios)}
+            
             <label>Primer Himno:</label>
             <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}" oninput="generarPDF()">
 
@@ -53,11 +32,15 @@ async function mostrarFormulario() {
             <input type="text" id="primeraOracion" value="${agendaDatos.primeraOracion || ''}" oninput="generarPDF()">
 
             ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos', agendaDatos.asuntos)}
-            ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios', agendaDatos.testimonios)}
+            
+            <label>Himno Sacramental:</label>
+            <input type="text" id="himnoSacramental" value="${agendaDatos.himnoSacramental || ''}" oninput="generarPDF()">
 
             <label>Primer Discursante:</label>
             <input type="text" id="primerDiscursante" value="${agendaDatos.primerDiscursante || ''}" oninput="generarPDF()">
 
+            ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios', agendaDatos.testimonios)}
+            
             <label>Himno Intermedio:</label>
             <input type="text" id="himnoIntermedio" value="${agendaDatos.himnoIntermedio || ''}" oninput="generarPDF()">
 
@@ -71,7 +54,6 @@ async function mostrarFormulario() {
             <input type="text" id="ultimaOracion" value="${agendaDatos.ultimaOracion || ''}" oninput="generarPDF()">
         </form>
     `;
-    // Generar PDF inicial con datos precargados
     generarPDF();
 }
 
@@ -98,7 +80,7 @@ function crearListaHTML(titulo, inputId, listaId, items=[]) {
 function agregarItem(inputId, listId) {
     const input = document.getElementById(inputId);
     const texto = input.value.trim();
-    if (texto !== "") {
+    if(texto !== ""){
         const li = document.createElement("li");
         li.textContent = texto;
         const btnEliminar = document.createElement("button");
@@ -107,64 +89,61 @@ function agregarItem(inputId, listId) {
         li.appendChild(btnEliminar);
         document.getElementById(listId).appendChild(li);
         input.value = "";
-        generarPDF(); // Actualiza PDF automáticamente
+        generarPDF();
     }
 }
 
 function eliminarItem(btn, listId) {
     btn.parentElement.remove();
-    generarPDF(); // Actualiza PDF automáticamente
+    generarPDF();
 }
 
 function generarPDF() {
-    if (!window.jspdf) return;
-
-    // Guardar datos
-    agendaDatos = {
-        fecha: document.getElementById("fecha") ? document.getElementById("fecha").value : agendaDatos.fecha,
-        dirige: document.getElementById("dirige") ? document.getElementById("dirige").value : agendaDatos.dirige,
-        preside: document.getElementById("preside") ? document.getElementById("preside").value : agendaDatos.preside,
-        primerHimno: document.getElementById("primerHimno") ? document.getElementById("primerHimno").value : agendaDatos.primerHimno,
-        primeraOracion: document.getElementById("primeraOracion") ? document.getElementById("primeraOracion").value : agendaDatos.primeraOracion,
-        primerDiscursante: document.getElementById("primerDiscursante") ? document.getElementById("primerDiscursante").value : agendaDatos.primerDiscursante,
-        himnoIntermedio: document.getElementById("himnoIntermedio") ? document.getElementById("himnoIntermedio").value : agendaDatos.himnoIntermedio,
-        segundoDiscursante: document.getElementById("segundoDiscursante") ? document.getElementById("segundoDiscursante").value : agendaDatos.segundoDiscursante,
-        ultimoHimno: document.getElementById("ultimoHimno") ? document.getElementById("ultimoHimno").value : agendaDatos.ultimoHimno,
-        ultimaOracion: document.getElementById("ultimaOracion") ? document.getElementById("ultimaOracion").value : agendaDatos.ultimaOracion,
-        anuncios: Array.from(document.querySelectorAll("#listaAnuncios li")).map(li => li.textContent.replace('❌','')) || agendaDatos.anuncios || [],
-        asuntos: Array.from(document.querySelectorAll("#listaAsuntos li")).map(li => li.textContent.replace('❌','')) || agendaDatos.asuntos || [],
-        testimonios: Array.from(document.querySelectorAll("#listaTestimonios li")).map(li => li.textContent.replace('❌','')) || agendaDatos.testimonios || []
-    };
-
-    guardarDatos();
-
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 20;
     const lineHeight = 10;
     const pageHeight = doc.internal.pageSize.height;
 
-    function checkPageSpace(lines = 1) {
-        if (y + lineHeight * lines > pageHeight - 10) {
+    // Guardar los datos
+    agendaDatos = {
+        fecha: document.getElementById("fecha")?.value || '',
+        dirige: document.getElementById("dirige")?.value || '',
+        preside: document.getElementById("preside")?.value || '',
+        primerHimno: document.getElementById("primerHimno")?.value || '',
+        primeraOracion: document.getElementById("primeraOracion")?.value || '',
+        himnoSacramental: document.getElementById("himnoSacramental")?.value || '',
+        primerDiscursante: document.getElementById("primerDiscursante")?.value || '',
+        himnoIntermedio: document.getElementById("himnoIntermedio")?.value || '',
+        segundoDiscursante: document.getElementById("segundoDiscursante")?.value || '',
+        ultimoHimno: document.getElementById("ultimoHimno")?.value || '',
+        ultimaOracion: document.getElementById("ultimaOracion")?.value || '',
+        anuncios: Array.from(document.querySelectorAll("#listaAnuncios li")).map(li => li.textContent.replace('❌','')),
+        asuntos: Array.from(document.querySelectorAll("#listaAsuntos li")).map(li => li.textContent.replace('❌','')),
+        testimonios: Array.from(document.querySelectorAll("#listaTestimonios li")).map(li => li.textContent.replace('❌',''))
+    };
+
+    function checkPageSpace(lines=1){
+        if(y + lineHeight*lines > pageHeight - 10){
             doc.addPage();
             y = 20;
         }
     }
 
-    function agregarCampo(nombre, valor) {
+    function agregarCampo(nombre, valor){
         checkPageSpace();
         doc.setFontSize(12);
-        doc.text(`${nombre}: ${valor || ''}`, 15, y);
+        doc.text(`${nombre}: ${valor}`, 15, y);
         y += lineHeight;
     }
 
-    function agregarListaPDF(titulo, items) {
-        if (!items || items.length === 0) return;
+    function agregarListaPDF(titulo, items){
+        if(!items || items.length === 0) return;
         checkPageSpace();
         doc.setFontSize(12);
         doc.text(`${titulo}:`, 15, y);
         y += lineHeight;
-        items.forEach(texto => {
+        items.forEach(texto=>{
             checkPageSpace();
             doc.text(`- ${texto}`, 20, y);
             y += 8;
@@ -184,8 +163,9 @@ function generarPDF() {
     agregarCampo("Primer Himno", agendaDatos.primerHimno);
     agregarCampo("Primera Oración", agendaDatos.primeraOracion);
     agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos);
-    agregarListaPDF("Testimonios", agendaDatos.testimonios);
+    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental);
     agregarCampo("Primer Discursante", agendaDatos.primerDiscursante);
+    agregarListaPDF("Testimonios", agendaDatos.testimonios);
     agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio);
     agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante);
     agregarCampo("Último Himno", agendaDatos.ultimoHimno);
@@ -194,16 +174,69 @@ function generarPDF() {
     pdfBlob = doc.output("blob");
 }
 
+// Ver PDF en nueva ventana
 function verPDF() {
     if(!pdfBlob){
-        alert("Primero debes crear una agenda");
+        alert("Primero debes crear la agenda");
         return;
     }
     const fecha = agendaDatos.fecha || new Date().toISOString().split('T')[0];
     const nombreArchivo = `Reunión_Sacramental_${fecha}.pdf`;
     const url = URL.createObjectURL(pdfBlob);
-    window.open(url, "_blank");
+
+    // Crear nueva ventana con vista previa y botón de descarga
+    const previewWindow = window.open("", "_blank");
+    previewWindow.document.write(`
+        <html>
+        <head>
+            <title>Vista previa PDF</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                iframe { width: 100%; height: 80vh; border: 1px solid #ccc; margin-bottom: 10px; }
+                button { padding: 10px 15px; font-size: 14px; border: none; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 5px; }
+                button:hover { background-color: #45a049; }
+            </style>
+        </head>
+        <body>
+            <h2>Vista previa del PDF</h2>
+            <iframe src="${url}"></iframe>
+            <br>
+            <a href="${url}" download="${nombreArchivo}">
+                <button>Descargar PDF</button>
+            </a>
+        </body>
+        </html>
+    `);
+    previewWindow.document.close();
 }
 
-// Inicialización al cargar la página
+
+// Descargar JSON de datos
+function descargarJSON() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(agendaDatos));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = "agenda.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+// Cargar JSON de datos
+function cargarJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+        try{
+            agendaDatos = JSON.parse(e.target.result);
+            mostrarFormulario();
+        } catch(err){
+            alert("Archivo JSON inválido");
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Inicializar
 window.onload = inicializar;

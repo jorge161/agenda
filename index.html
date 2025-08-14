@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -12,11 +12,13 @@
     <div class="top-buttons">
         <button onclick="mostrarFormulario()">Editar Agenda</button>
         <button onclick="verPDF()">Ver Agenda</button>
+        <button onclick="descargarJSON()">Descargar Datos</button>
+        <input type="file" id="subirJSON" accept=".json" onchange="cargarJSON(event)">
     </div>
 
     <div id="contenido"></div>
 
-    <script src="js/jspdf.umd.min.js"></script>
+    <script src="js/jsPDF-2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
