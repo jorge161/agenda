@@ -1,5 +1,4 @@
-/* Reset básico */
-* {
+ * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -71,7 +70,7 @@ form input[type="date"] {
 
 .list-container .item-input {
     display: flex;
-    flex-direction: column; /* LINEAL en móvil */
+    flex-direction: column;
     gap: 5px;
     margin-top: 5px;
 }
@@ -127,7 +126,23 @@ iframe {
     border-radius: 5px;
 }
 
-/* Responsive móvil lineal */
+/* Botón Aceptar */
+#btnAceptar {
+    margin-top: 20px;
+    padding: 12px 20px;
+    font-size: 16px;
+    background-color: #FF9800;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#btnAceptar:hover {
+    background-color: #e68900;
+}
+
+/* Responsive móvil */
 @media (max-width: 600px) {
     .top-buttons {
         flex-direction: column;
@@ -135,7 +150,7 @@ iframe {
     }
 
     .list-container .item-input {
-        flex-direction: column; /* Siempre lineal */
+        flex-direction: column;
     }
 
     .list-container button {
