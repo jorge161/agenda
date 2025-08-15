@@ -1,5 +1,5 @@
- let pdfBlob = null;
-let agendaDatos = {}; // Datos del formulario
+let pdfBlob = null;
+let agendaDatos = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     mostrarFormulario();
@@ -21,7 +21,6 @@ function mostrarFormulario() {
             <input type="text" id="preside" value="${agendaDatos.preside || ''}">
 
             ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios', agendaDatos.anuncios || [])}
-
             <label>Primer Himno:</label>
             <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}">
 
@@ -53,13 +52,15 @@ function mostrarFormulario() {
         </form>
     `;
 
-    document.getElementById('btnAceptar').addEventListener('click', generarPDF);
+    document.getElementById('btnAceptar').addEventListener('click', () => {
+        if(validarCampos()) generarPDF();
+    });
 }
 
 function crearListaHTML(titulo, inputId, listaId, items=[]) {
     let listItems = items.map(texto => `<li>${texto} <button type="button" onclick="this.parentElement.remove()">❌</button></li>`).join('');
     return `
-    <div class="list-container" id="container-${listaId}">
+    <div class="list-container">
         <label>${titulo}:</label>
         <div class="item-input">
             <input type="text" id="${inputId}" placeholder="Escribe aquí">
@@ -72,12 +73,13 @@ function crearListaHTML(titulo, inputId, listaId, items=[]) {
 function agregarItem(inputId, listId) {
     const input = document.getElementById(inputId);
     const texto = input.value.trim();
-    if (texto !== "") {
+    if(texto !== "") {
         const li = document.createElement("li");
         li.innerHTML = `${texto} <button type="button" onclick="this.parentElement.remove()">❌</button>`;
         document.getElementById(listId).appendChild(li);
         input.value = "";
     }
+    validarCampos();
 }
 
 function actualizarAgendaDatos() {
@@ -100,52 +102,55 @@ function actualizarAgendaDatos() {
     };
 }
 
-function generarPDF() {
-    actualizarAgendaDatos();
+function validarCampos() {
+    let vacio = false;
 
-    // Validar campos obligatorios
-    const camposObligatorios = [
-        'barrio','fecha','dirige','preside',
-        'primerHimno','primeraOracion','himnoSacramental',
-        'primerDiscursante','himnoIntermedio','segundoDiscursante',
-        'ultimoHimno','ultimaOracion'
-    ];
-
-    let camposVacios = [];
-    camposObligatorios.forEach(campo => {
-        const input = document.getElementById(campo);
-        if (!agendaDatos[campo] || agendaDatos[campo].trim() === '') {
-            input.style.border = '2px solid red'; // resaltar
-            camposVacios.push(campo);
+    // Validar inputs de texto y fecha EXCLUYENDO los inputs dentro de listas
+    document.querySelectorAll("input[type='text']:not(.list-container input)").forEach(input => {
+        if(input.value.trim() === "") {
+            input.classList.add('vacia');
+            vacio = true;
         } else {
-            input.style.border = ''; // quitar borde
+            input.classList.remove('vacia');
+        }
+    });
+    document.querySelectorAll("input[type='date']").forEach(input => {
+        if(input.value.trim() === "") {
+            input.classList.add('vacia');
+            vacio = true;
+        } else {
+            input.classList.remove('vacia');
         }
     });
 
     // Validar listas
-    const listasObligatorias = [
-        {id: 'listaAnuncios', containerId: 'container-listaAnuncios'},
-        {id: 'listaAsuntos', containerId: 'container-listaAsuntos'},
-        {id: 'listaTestimonios', containerId: 'container-listaTestimonios'}
-    ];
-
-    listasObligatorias.forEach(lista => {
-        const container = document.getElementById(lista.containerId);
-        const items = document.getElementById(lista.id).children;
-        if (items.length === 0) {
-            container.style.border = '2px solid red';
-            camposVacios.push(lista.id);
+    document.querySelectorAll(".list-container").forEach(container => {
+        const input = container.querySelector("input[type='text']");
+        const lista = container.querySelector(".item-list");
+        const items = Array.from(lista.children).filter(li => li.textContent.replace('❌','').trim() !== '');
+        if(items.length === 0) {
+            input.classList.add('vacia');
+            lista.classList.add('vacia');
+            container.querySelector("button").classList.add('vacia');
+            vacio = true;
         } else {
-            container.style.border = '';
+            input.classList.remove('vacia');
+            lista.classList.remove('vacia');
+            container.querySelector("button").classList.remove('vacia');
         }
     });
 
-    if (camposVacios.length > 0) {
-        alert("Por favor completa todos los campos y listas obligatorias resaltadas en rojo antes de generar el PDF.");
-        return;
+    if(vacio) {
+        alert("Aún hay campos vacíos que deben ser llenados.");
+        return false;
     }
 
-    // Crear PDF con jsPDF
+    actualizarAgendaDatos();
+    return true;
+}
+
+
+function generarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 15;
@@ -160,25 +165,23 @@ function generarPDF() {
         }
     }
 
-    function agregarCampo(nombre, valor, colorFondo = [245,245,245]) {
+    function agregarCampo(nombre, valor) {
         checkPageSpace();
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.text(`${nombre}:`, 10, y);
-
         doc.setFont("helvetica", "normal");
-        const margen = 5;
-        const x = 10 + doc.getTextWidth(`${nombre}:`) + margen;
+        const x = 10 + doc.getTextWidth(`${nombre}:`) + 5;
         const ancho = pageWidth - x - 10;
         const alto = 7;
         doc.setDrawColor(200);
-        doc.setFillColor(...colorFondo);
-        doc.rect(x, y - 5, ancho, alto, "FD");
-        doc.text(`${valor}`, x + 2, y);
+        doc.setFillColor(245,245,245);
+        doc.rect(x, y-5, ancho, alto, "FD");
+        doc.text(`${valor}`, x+2, y);
         y += lineHeight;
     }
 
-    function agregarListaPDF(titulo, items, colorFondo=[245,245,245]) {
+    function agregarListaPDF(titulo, items) {
         if(items.length === 0) return;
         checkPageSpace();
         doc.setFont("helvetica", "bold");
@@ -191,9 +194,9 @@ function generarPDF() {
             const ancho = pageWidth - x - 15;
             const alto = 6;
             doc.setDrawColor(200);
-            doc.setFillColor(...colorFondo);
-            doc.rect(x, y - 5, ancho, alto, "FD");
-            doc.text(`- ${texto}`, x + 2, y);
+            doc.setFillColor(245,245,245);
+            doc.rect(x, y-5, ancho, alto, "FD");
+            doc.text(`- ${texto}`, x+2, y);
             y += 7;
         });
         y += 2;
@@ -204,30 +207,25 @@ function generarPDF() {
     doc.text("Agenda Sacramental", pageWidth/2, y, null, null, "center");
     y += 12;
 
-    const colores = [
-        [245,245,245], [230, 240, 255], [245,245,245], [230, 240, 255]
-    ];
+    agregarCampo("Barrio", agendaDatos.barrio);
+    agregarCampo("Fecha", agendaDatos.fecha);
+    agregarCampo("Dirige", agendaDatos.dirige);
+    agregarCampo("Preside", agendaDatos.preside);
+    agregarListaPDF("Anuncios", agendaDatos.anuncios);
+    agregarCampo("Primer Himno", agendaDatos.primerHimno);
+    agregarCampo("Primera Oración", agendaDatos.primeraOracion);
+    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental);
+    agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos);
+    agregarListaPDF("Testimonios", agendaDatos.testimonios);
+    agregarCampo("Primer Discursante", agendaDatos.primerDiscursante);
+    agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio);
+    agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante);
+    agregarCampo("Último Himno", agendaDatos.ultimoHimno);
+    agregarCampo("Última Oración", agendaDatos.ultimaOracion);
 
-    agregarCampo("Barrio", agendaDatos.barrio, colores[0]);
-    agregarCampo("Fecha", agendaDatos.fecha, colores[1]);
-    agregarCampo("Dirige", agendaDatos.dirige, colores[2]);
-    agregarCampo("Preside", agendaDatos.preside, colores[3]);
-    agregarListaPDF("Anuncios", agendaDatos.anuncios, colores[0]);
-    agregarCampo("Primer Himno", agendaDatos.primerHimno, colores[1]);
-    agregarCampo("Primera Oración", agendaDatos.primeraOracion, colores[2]);
-    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental, colores[3]);
-    agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos, colores[0]);
-    agregarListaPDF("Testimonios", agendaDatos.testimonios, colores[1]);
-    agregarCampo("Primer Discursante", agendaDatos.primerDiscursante, colores[2]);
-    agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio, colores[3]);
-    agregarCampo("Segundo Discursante", agendaDatos.segundoDiscursante, colores[0]);
-    agregarCampo("Último Himno", agendaDatos.ultimoHimno, colores[1]);
-    agregarCampo("Última Oración", agendaDatos.ultimaOracion, colores[2]);
-
-    // Pie de página
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.text("Cortesía de Jorge D. Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
+    doc.text("Cortesía de Jorge Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight-10, null, null, "center");
 
     pdfBlob = doc.output("blob");
     alert("¡Listo! Ahora puedes ver la agenda.");
@@ -247,35 +245,33 @@ function verPDF() {
         <h2>Vista previa del PDF</h2>
         <embed src="${url}" type="application/pdf" width="100%" height="600px" style="border:1px solid #ccc;">
         <br>
-        <a href="${url}" download="${nombreArchivo}" style="display:inline-block;margin-top:10px;padding:10px 15px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:5px;">
-            Descargar PDF
-        </a>
-        <button onclick="mostrarFormulario()" style="margin-left:10px;padding:10px 15px;background-color:#555;color:white;border:none;border-radius:5px;cursor:pointer;">
-            Volver al formulario
-        </button>
+        <a href="${url}" download="${nombreArchivo}" style="display:inline-block;margin-top:10px;padding:10px 15px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:5px;">Descargar PDF</a>
+        <button onclick="mostrarFormulario()" style="margin-top:10px;padding:10px 15px;border:none;border-radius:5px;background-color:#FF9800;color:white;cursor:pointer;">Regresar</button>
     `;
 }
 
-// Descargar JSON
 function descargarJSON() {
     actualizarAgendaDatos();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(agendaDatos));
-    const a = document.createElement('a');
-    a.href = dataStr;
+    const json = JSON.stringify(agendaDatos, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
     a.download = "agenda.json";
-    document.body.appendChild(a);
     a.click();
-    a.remove();
 }
 
-// Cargar JSON
 function cargarJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = function(e) {
-        agendaDatos = JSON.parse(e.target.result);
-        mostrarFormulario(); // precarga editable
+    reader.onload = e => {
+        try {
+            agendaDatos = JSON.parse(e.target.result);
+            mostrarFormulario();
+        } catch(err) {
+            alert("Archivo JSON inválido");
+        }
     };
     reader.readAsText(file);
 }
