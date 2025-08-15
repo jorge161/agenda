@@ -52,13 +52,14 @@ function mostrarFormulario() {
             <button type="button" id="btnAceptar">Aceptar</button>
         </form>
     `;
+
     document.getElementById('btnAceptar').addEventListener('click', generarPDF);
 }
 
 function crearListaHTML(titulo, inputId, listaId, items=[]) {
     let listItems = items.map(texto => `<li>${texto} <button type="button" onclick="this.parentElement.remove()">❌</button></li>`).join('');
     return `
-    <div class="list-container">
+    <div class="list-container" id="container-${listaId}">
         <label>${titulo}:</label>
         <div class="item-input">
             <input type="text" id="${inputId}" placeholder="Escribe aquí">
@@ -109,12 +110,42 @@ function generarPDF() {
         'primerDiscursante','himnoIntermedio','segundoDiscursante',
         'ultimoHimno','ultimaOracion'
     ];
-    const camposVacios = camposObligatorios.filter(campo => !agendaDatos[campo] || agendaDatos[campo].trim() === '');
+
+    let camposVacios = [];
+    camposObligatorios.forEach(campo => {
+        const input = document.getElementById(campo);
+        if (!agendaDatos[campo] || agendaDatos[campo].trim() === '') {
+            input.style.border = '2px solid red'; // resaltar
+            camposVacios.push(campo);
+        } else {
+            input.style.border = ''; // quitar borde
+        }
+    });
+
+    // Validar listas
+    const listasObligatorias = [
+        {id: 'listaAnuncios', containerId: 'container-listaAnuncios'},
+        {id: 'listaAsuntos', containerId: 'container-listaAsuntos'},
+        {id: 'listaTestimonios', containerId: 'container-listaTestimonios'}
+    ];
+
+    listasObligatorias.forEach(lista => {
+        const container = document.getElementById(lista.containerId);
+        const items = document.getElementById(lista.id).children;
+        if (items.length === 0) {
+            container.style.border = '2px solid red';
+            camposVacios.push(lista.id);
+        } else {
+            container.style.border = '';
+        }
+    });
+
     if (camposVacios.length > 0) {
-        alert("Por favor completa todos los campos antes de generar el PDF.");
-        return; // Detener la generación si hay campos vacíos
+        alert("Por favor completa todos los campos y listas obligatorias resaltadas en rojo antes de generar el PDF.");
+        return;
     }
 
+    // Crear PDF con jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 15;
@@ -193,9 +224,10 @@ function generarPDF() {
     agregarCampo("Último Himno", agendaDatos.ultimoHimno, colores[1]);
     agregarCampo("Última Oración", agendaDatos.ultimaOracion, colores[2]);
 
+    // Pie de página
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.text("Cortesía de Jorge Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
+    doc.text("Cortesía de Jorge D. Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
 
     pdfBlob = doc.output("blob");
     alert("¡Listo! Ahora puedes ver la agenda.");
