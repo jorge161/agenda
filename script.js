@@ -102,6 +102,19 @@ function actualizarAgendaDatos() {
 function generarPDF() {
     actualizarAgendaDatos();
 
+    // Validar campos obligatorios
+    const camposObligatorios = [
+        'barrio','fecha','dirige','preside',
+        'primerHimno','primeraOracion','himnoSacramental',
+        'primerDiscursante','himnoIntermedio','segundoDiscursante',
+        'ultimoHimno','ultimaOracion'
+    ];
+    const camposVacios = camposObligatorios.filter(campo => !agendaDatos[campo] || agendaDatos[campo].trim() === '');
+    if (camposVacios.length > 0) {
+        alert("Por favor completa todos los campos antes de generar el PDF.");
+        return; // Detener la generación si hay campos vacíos
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 15;
@@ -117,23 +130,22 @@ function generarPDF() {
     }
 
     function agregarCampo(nombre, valor, colorFondo = [245,245,245]) {
-    checkPageSpace();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`${nombre}:`, 10, y);
+        checkPageSpace();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`${nombre}:`, 10, y);
 
-    doc.setFont("helvetica", "normal");
-    const margen = 5; // espacio entre el nombre y el recuadro del valor
-    const x = 10 + doc.getTextWidth(`${nombre}:`) + margen;
-    const ancho = pageWidth - x - 10;
-    const alto = 7;
-    doc.setDrawColor(200);
-    doc.setFillColor(...colorFondo);
-    doc.rect(x, y - 5, ancho, alto, "FD");
-    doc.text(`${valor}`, x + 2, y);
-    y += lineHeight;
-}
-
+        doc.setFont("helvetica", "normal");
+        const margen = 5;
+        const x = 10 + doc.getTextWidth(`${nombre}:`) + margen;
+        const ancho = pageWidth - x - 10;
+        const alto = 7;
+        doc.setDrawColor(200);
+        doc.setFillColor(...colorFondo);
+        doc.rect(x, y - 5, ancho, alto, "FD");
+        doc.text(`${valor}`, x + 2, y);
+        y += lineHeight;
+    }
 
     function agregarListaPDF(titulo, items, colorFondo=[245,245,245]) {
         if(items.length === 0) return;
@@ -181,47 +193,35 @@ function generarPDF() {
     agregarCampo("Último Himno", agendaDatos.ultimoHimno, colores[1]);
     agregarCampo("Última Oración", agendaDatos.ultimaOracion, colores[2]);
 
-    // Pie de página
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.text("Cortesía de Jorge D. Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
+    doc.text("Cortesía de Jorge Silva, Barrio San Antonio Estaca El Merendón", pageWidth/2, pageHeight - 10, null, null, "center");
 
     pdfBlob = doc.output("blob");
     alert("¡Listo! Ahora puedes ver la agenda.");
 }
 
 function verPDF() {
-    if(!pdfBlob){
+    if (!pdfBlob) {
         alert("Primero debes crear una agenda");
         return;
     }
+
     const fecha = agendaDatos.fecha || new Date().toISOString().split('T')[0];
     const nombreArchivo = `Reunión_Sacramental_${fecha}.pdf`;
     const url = URL.createObjectURL(pdfBlob);
 
-    const previewWindow = window.open("", "_blank");
-    previewWindow.document.write(`
-        <html>
-        <head>
-            <title>Vista previa PDF</title>
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                iframe { width: 100%; height: 80vh; border: 1px solid #ccc; margin-bottom: 10px; }
-                button { padding: 10px 15px; font-size: 14px; border: none; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 5px; }
-                button:hover { background-color: #45a049; }
-            </style>
-        </head>
-        <body>
-            <h2>Vista previa del PDF</h2>
-            <iframe src="${url}"></iframe>
-            <br>
-            <a href="${url}" download="${nombreArchivo}">
-                <button>Descargar PDF</button>
-            </a>
-        </body>
-        </html>
-    `);
-    previewWindow.document.close();
+    document.getElementById("contenido").innerHTML = `
+        <h2>Vista previa del PDF</h2>
+        <embed src="${url}" type="application/pdf" width="100%" height="600px" style="border:1px solid #ccc;">
+        <br>
+        <a href="${url}" download="${nombreArchivo}" style="display:inline-block;margin-top:10px;padding:10px 15px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:5px;">
+            Descargar PDF
+        </a>
+        <button onclick="mostrarFormulario()" style="margin-left:10px;padding:10px 15px;background-color:#555;color:white;border:none;border-radius:5px;cursor:pointer;">
+            Volver al formulario
+        </button>
+    `;
 }
 
 // Descargar JSON
