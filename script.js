@@ -22,15 +22,18 @@ function mostrarFormulario() {
 
             ${crearListaHTML('Anuncios','nuevoAnuncio','listaAnuncios', agendaDatos.anuncios || [])}
             <label>Primer Himno:</label>
+            
             <input type="text" id="primerHimno" value="${agendaDatos.primerHimno || ''}">
 
             <label>Primera Oración:</label>
             <input type="text" id="primeraOracion" value="${agendaDatos.primeraOracion || ''}">
 
+            
+            ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos', agendaDatos.asuntos || [])}
+            
             <label>Himno Sacramental:</label>
             <input type="text" id="himnoSacramental" value="${agendaDatos.himnoSacramental || ''}">
 
-            ${crearListaHTML('Asuntos del barrio','nuevoAsunto','listaAsuntos', agendaDatos.asuntos || [])}
             ${crearListaHTML('Testimonios','nuevoTestimonio','listaTestimonios', agendaDatos.testimonios || [])}
 
             <label>Primer Discursante:</label>
@@ -214,8 +217,8 @@ function generarPDF() {
     agregarListaPDF("Anuncios", agendaDatos.anuncios);
     agregarCampo("Primer Himno", agendaDatos.primerHimno);
     agregarCampo("Primera Oración", agendaDatos.primeraOracion);
-    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental);
     agregarListaPDF("Asuntos del barrio", agendaDatos.asuntos);
+    agregarCampo("Himno Sacramental", agendaDatos.himnoSacramental);
     agregarListaPDF("Testimonios", agendaDatos.testimonios);
     agregarCampo("Primer Discursante", agendaDatos.primerDiscursante);
     agregarCampo("Himno Intermedio", agendaDatos.himnoIntermedio);
